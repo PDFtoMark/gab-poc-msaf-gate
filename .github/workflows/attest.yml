@@ -1,0 +1,40 @@
+name: Gate probe (mirror of dotnet-release-attestation validate job)
+
+on:
+  workflow_run:
+    workflows: [".NET package SBOM (credential-free verification)"]
+    types: [completed]
+
+permissions:
+  contents: read
+
+jobs:
+  validate-attestation-eligibility:
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      (github.event.workflow_run.event == 'workflow_dispatch' ||
+      startsWith(github.event.workflow_run.head_branch, 'dotnet-v'))
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Report upstream workflow_run payload
+        env:
+          UPSTREAM_EVENT_NAME: ${{ github.event.workflow_run.event }}
+          UPSTREAM_HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
+          UPSTREAM_HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          echo "upstream_event=$UPSTREAM_EVENT_NAME"
+          echo "upstream_head_branch=$UPSTREAM_HEAD_BRANCH"
+          echo "upstream_head_sha=$UPSTREAM_HEAD_SHA"
+      - name: Apply real Resolve-WorkflowRunAttestationRef gate
+        env:
+          UPSTREAM_EVENT_NAME: ${{ github.event.workflow_run.event }}
+        run: |
+          case "$UPSTREAM_EVENT_NAME" in
+            push|workflow_dispatch)
+              echo "[ OK ] event '$UPSTREAM_EVENT_NAME' can produce an attestation-eligible ref candidate" ;;
+            *)
+              echo "::error::[FAIL] upstream event '$UPSTREAM_EVENT_NAME' never produces an attestation-eligible ref candidate (only push or workflow_dispatch do) -- refusing to attest"
+              exit 1 ;;
+          esac
