@@ -1,0 +1,17 @@
+name: .NET package SBOM (credential-free verification)
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  sbom:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: No-op credential-free build
+        run: echo "upstream sbom-shaped run on event=${{ github.event_name }}"
